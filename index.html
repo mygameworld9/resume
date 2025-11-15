@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Resume Generator</title>
+    
+    <!-- 1. Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- 4. Babel Standalone CDN (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 5. html2canvas CDN (for Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- 6. Inline Tailwind Configuration -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            boxShadow: {
+              // A subtle, premium shadow for the resume paper
+              'a4': '0 10px 30px -15px rgba(0, 0, 0, 0.1), 0 5px 15px -10px rgba(0, 0, 0, 0.05)',
+            },
+            maxWidth: {
+              'a4': '210mm', // 8.27 inches
+            },
+            minHeight: {
+              'a4': '297mm', // 11.69 inches
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- Basic styling to ensure full height and font application -->
+    <style>
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+    </style>
+</head>
+<body class="bg-slate-100">
+    
+    <!-- The React root element -->
+    <div id="root"></div>
+
+    <!-- 7. The React Application (written in JSX) -->
+    <script type="text/babel">
+      const { useState, useRef, Fragment } = React;
+
+      // --- Reusable Styled Components ---
+
+      // Styled Input component
+      const Input = ({ label, name, value, onChange, placeholder, type = "text" }) => (
+        <div className="mb-4">
+          <label htmlFor={name} className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+          <input
+            type={type}
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          />
+        </div>
+      );
+
+      // Styled Textarea component
+      const Textarea = ({ label, name, value, onChange, placeholder, rows = 4 }) => (
+        <div className="mb-4">
+          <label htmlFor={name} className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+          <textarea
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={rows}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          />
+        </div>
+      );
+      
+      // Section wrapper for the editor
+      const EditorSection = ({ title, children }) => (
+        <div className="bg-white rounded-lg shadow-md mb-6 p-6">
+          <h2 className="text-xl font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">{title}</h2>
+          {children}
+        </div>
+      );
+      
+      // Button for adding items
+      const AddButton = ({ onClick, children }) => (
+        <button
+          type="button"
+          onClick={onClick}
+          className="w-full text-center px-4 py-2 border border-dashed border-blue-500 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+        >
+          + {children}
+        </button>
+      );
+      
+      // Button for removing items
+      const RemoveButton = ({ onClick, children }) => (
+         <button
+            type="button"
+            onClick={onClick}
+            className="ml-4 flex-shrink-0 text-red-500 hover:text-red-700 font-medium transition-colors"
+          >
+            {children}
+          </button>
+      );
+
+      // --- Main App Component ---
+      const App = () => {
+        // --- State Definitions ---
+        const [personalInfo, setPersonalInfo] = useState({
+          name: "Your Name",
+          title: "Senior React Architect",
+          phone: "+1 (123) 456-7890",
+          email: "your.name@email.com",
+          location: "San Francisco, CA",
+          linkedin: "linkedin.com/in/yourprofile",
+        });
+
+        const [summary, setSummary] = useState(
+          "Seasoned and innovative Senior React Architect with over 10 years of experience leading, designing, and implementing high-performance web applications. Proven ability to translate complex business requirements into scalable and maintainable solutions. Passionate about building premium user interfaces and mentoring high-performing teams."
+        );
+
+        const [experience, setExperience] = useState([
+          {
+            jobTitle: "Lead Frontend Architect",
+            company: "Tech Innovations Inc.",
+            dates: "Jan 2020 - Present",
+            description: "Led the architecture of a $50M greenfield project.\Mentored a team of 15+ frontend developers.\Improved application performance by 40% through code splitting and memoization.",
+          },
+          {
+            jobTitle: "Senior Software Engineer",
+            company: "Solutions Co.",
+            dates: "Jun 2016 - Dec 2019",
+            description: "Developed and maintained core UI component library.\Collaborated with UX/UI designers to ensure pixel-perfect implementation.\Refactored legacy codebase to modern React and TypeScript.",
+          },
+        ]);
+
+        const [education, setEducation] = useState([
+          {
+            degree: "M.S. in Computer Science",
+            institution: "Stanford University",
+            dates: "2014 - 2016",
+          },
+          {
+            degree: "B.S. in Computer Science",
+            institution: "University of California, Berkeley",
+            dates: "2010 - 2014",
+          },
+        ]);
+
+        const [skills, setSkills] = useState([
+          "React", "JavaScript (ESNext)", "TypeScript", "Node.js", "GraphQL", "Tailwind CSS", "Webpack", "Babel", "Jest", "React Testing Library", "CI/CD", "System Architecture", "UI/UX Design"
+        ]);
+        
+        // State for the "Add Skill" input
+        const [skillInput, setSkillInput] = useState("");
+        
+        // State for download button
+        const [isDownloading, setIsDownloading] = useState(false);
+        
+        // Ref for the resume preview element
+        const resumeRef = useRef(null);
+
+        // --- Event Handlers ---
+
+        // Personal Info
+        const handlePersonalInfoChange = (e) => {
+          const { name, value } = e.target;
+          setPersonalInfo((prev) => ({ ...prev, [name]: value }));
+        };
+
+        // --- Experience Handlers ---
+        const handleExperienceChange = (index, e) => {
+          const { name, value } = e.target;
+          const list = [...experience];
+          list[index][name] = value;
+          setExperience(list);
+        };
+
+        const addExperience = () => {
+          setExperience([
+            ...experience,
+            { jobTitle: "", company: "", dates: "", description: "" },
+          ]);
+        };
+
+        const removeExperience = (index) => {
+          const list = [...experience];
+          list.splice(index, 1);
+          setExperience(list);
+        };
+
+        // --- Education Handlers ---
+        const handleEducationChange = (index, e) => {
+          const { name, value } = e.target;
+          const list = [...education];
+          list[index][name] = value;
+          setEducation(list);
+        };
+
+        const addEducation = () => {
+          setEducation([
+            ...education,
+            { degree: "", institution: "", dates: "" },
+          ]);
+        };
+
+        const removeEducation = (index) => {
+          const list = [...education];
+          list.splice(index, 1);
+          setEducation(list);
+        };
+        
+        // --- Skills Handlers ---
+        const addSkill = () => {
+          if (skillInput.trim() !== "" && !skills.includes(skillInput.trim())) {
+            setSkills([...skills, skillInput.trim()]);
+            setSkillInput("");
+          }
+        };
+        
+        const removeSkill = (index) => {
+          const list = [...skills];
+          list.splice(index, 1);
+          setSkills(list);
+        };
+        
+        // --- Download Handler ---
+        const handleDownload = () => {
+          const resumeElement = resumeRef.current;
+          if (!resumeElement) return;
+          
+          setIsDownloading(true);
+          
+          // Use html2canvas to capture the resume element
+          html2canvas(resumeElement, {
+            scale: 3, // Use scale 3 for high-res "Retina" quality
+            useCORS: true,
+            logging: false, // Set to true for debugging
+            // By default, html2canvas captures the full scroll height
+          }).then(canvas => {
+            // Create a link to download the image
+            const imgData = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            
+            // Format a clean filename
+            const fileName = `${personalInfo.name.toLowerCase().replace(/ /g, '_')}_resume.png`;
+            link.download = fileName;
+            link.href = imgData;
+            
+            // Trigger the download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setIsDownloading(false);
+          }).catch(err => {
+            console.error("Error generating resume image:", err);
+            setIsDownloading(false);
+            // In a real app, show a user-facing error message
+          });
+        };
+
+        // --- Render ---
+        return (
+          <div className="flex flex-col md:flex-row w-full h-full">
+            {/* --- Left Panel: Editor --- */}
+            <div className="w-full md:w-1/2 h-full overflow-y-auto bg-slate-50 p-8 shadow-inner">
+              <div className="max-w-3xl mx-auto">
+                {/* Download Button Header */}
+                <div className="sticky top-0 bg-slate-50 py-4 z-10 border-b border-slate-200 mb-6">
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">Super Resume</h1>
+                  <p className="text-slate-600 mb-4">Fill in your details to build your resume in real-time.</p>
+                  <button
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
+                  >
+                    {isDownloading ? 'Downloading...' : 'Download High-Res Resume'}
+                  </button>
+                </div>
+              
+                {/* Personal Info */}
+                <EditorSection title="Personal Info">
+                  <Input label="Full Name" name="name" value={personalInfo.name} onChange={handlePersonalInfoChange} />
+                  <Input label="Title" name="title" value={personalInfo.title} onChange={handlePersonalInfoChange} />
+                  <Input label="Phone" name="phone" value={personalInfo.phone} onChange={handlePersonalInfoChange} />
+                  <Input label="Email" name="email" value={personalInfo.email} onChange={handlePersonalInfoChange} type="email" />
+                  <Input label="Location" name="location" value={personalInfo.location} onChange={handlePersonalInfoChange} />
+                  <Input label="LinkedIn" name="linkedin" value={personalInfo.linkedin} onChange={handlePersonalInfoChange} />
+                </EditorSection>
+                
+                {/* Professional Summary */}
+                <EditorSection title="Professional Summary">
+                  <Textarea
+                    name="summary"
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="Write a brief summary of your career..."
+                    rows={6}
+                  />
+                </EditorSection>
+
+                {/* Experience */}
+                <EditorSection title="Experience">
+                  {experience.map((item, index) => (
+                    <div key={index} className="mb-4 p-4 border border-slate-200 rounded-md relative">
+                      <Input label="Job Title" name="jobTitle" value={item.jobTitle} onChange={(e) => handleExperienceChange(index, e)} />
+                      <Input label="Company" name="company" value={item.company} onChange={(e) => handleExperienceChange(index, e)} />
+                      <Input label="Dates" name="dates" value={item.dates} onChange={(e) => handleExperienceChange(index, e)} />
+                      <Textarea 
+                        label="Description (one point per line)" 
+                        name="description" 
+                        value={item.description} 
+                        onChange={(e) => handleExperienceChange(index, e)}
+                        placeholder="Point 1&#10;Point 2&#10;Point 3"
+                        rows={4}
+                      />
+                      <RemoveButton onClick={() => removeExperience(index)}>Remove</RemoveButton>
+                    </div>
+                  ))}
+                  <AddButton onClick={addExperience}>Add Experience</AddButton>
+                </EditorSection>
+
+                {/* Education */}
+                <EditorSection title="Education">
+                  {education.map((item, index) => (
+                    <div key={index} className="mb-4 p-4 border border-slate-200 rounded-md relative">
+                      <Input label="Degree / Certificate" name="degree" value={item.degree} onChange={(e) => handleEducationChange(index, e)} />
+                      <Input label="Institution" name="institution" value={item.institution} onChange={(e) => handleEducationChange(index, e)} />
+                      <Input label="Dates" name="dates" value={item.dates} onChange={(e) => handleEducationChange(index, e)} />
+                      <RemoveButton onClick={() => removeEducation(index)}>Remove</RemoveButton>
+                    </div>
+                  ))}
+                  <AddButton onClick={addEducation}>Add Education</AddButton>
+                </EditorSection>
+
+                {/* Skills */}
+                <EditorSection title="Skills">
+                  <div className="flex mb-4">
+                    <input
+                      type="text"
+                      value={skillInput}
+                      onChange={(e) => setSkillInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addSkill()}
+                      placeholder="Add a new skill"
+                      className="flex-grow px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={addSkill}
+                      className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill, index) => (
+                      <span key={index} className="flex items-center bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(index)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </EditorSection>
+              </div>
+            </div>
+
+            {/* --- Right Panel: Preview --- */}
+            <div className="w-full md:w-1/2 h-full overflow-y-auto bg-slate-200 p-8">
+              {/* This is the A4 paper element that will be captured */}
+              <div 
+                ref={resumeRef} 
+                className="w-full max-w-a4 mx-auto bg-white p-12 md:p-16 text-slate-900 shadow-a4"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+              >
+                {/* --- Resume Header --- */}
+                <header className="text-center mb-10">
+                  <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">{personalInfo.name}</h1>
+                  <h2 className="text-xl md:text-2xl font-medium text-blue-700 mb-4">{personalInfo.title}</h2>
+                  <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
+                    <span>{personalInfo.phone}</span>
+                    <span>{personalInfo.email}</span>
+                    <span>{personalInfo.location}</span>
+                    <span>{personalInfo.linkedin}</span>
+                  </div>
+                </header>
+
+                {/* --- Resume Body --- */}
+                <main>
+                  {/* Summary Section */}
+                  <section className="mb-8">
+                    <h3 className="text-2xl font-semibold text-slate-800 border-b-2 border-slate-200 pb-2 mb-4">Professional Summary</h3>
+                    <p className="text-slate-700 leading-relaxed">{summary}</p>
+                  </section>
+                  
+                  {/* Experience Section */}
+                  <section className="mb-8">
+                    <h3 className="text-2xl font-semibold text-slate-800 border-b-2 border-slate-200 pb-2 mb-4">Experience</h3>
+                    {experience.map((item, index) => (
+                      <div key={index} className="mb-6">
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h4 className="text-lg font-semibold text-slate-800">{item.jobTitle}</h4>
+                          <span className="text-sm font-medium text-slate-500">{item.dates}</span>
+                        </div>
+                        <h5 className="text-base font-medium text-blue-700 mb-2">{item.company}</h5>
+                        <ul className="list-disc list-inside text-slate-700 leading-relaxed space-y-1">
+                          {item.description.split('\n').filter(line => line.trim() !== '').map((line, i) => (
+                            <li key={i}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </section>
+
+                  {/* Education Section */}
+                  <section className="mb-8">
+                    <h3 className="text-2xl font-semibold text-slate-800 border-b-2 border-slate-200 pb-2 mb-4">Education</h3>
+                    {education.map((item, index) => (
+                      <div key={index} className="mb-4">
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h4 className="text-lg font-semibold text-slate-800">{item.degree}</h4>
+                          <span className="text-sm font-medium text-slate-500">{item.dates}</span>
+                        </div>
+                        <h5 className="text-base font-medium text-slate-600">{item.institution}</h5>
+                      </div>
+                    ))}
+                  </section>
+                  
+                  {/* Skills Section */}
+                  <section>
+                    <h3 className="text-2xl font-semibold text-slate-800 border-b-2 border-slate-200 pb-2 mb-4">Skills</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {skills.map((skill, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1.5 rounded-full">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                </main>
+              </div>
+            </div>
+            
+          </div>
+        );
+      };
+
+      // --- Mount the App ---
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+
+    </script>
+</body>
+</html>
