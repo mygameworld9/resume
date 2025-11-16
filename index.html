@@ -121,7 +121,8 @@
 
       // --- Main App Component ---
       const App = () => {
-        // --- State Definitions (Unchanged) ---
+        // --- State Definitions ---
+        const [photo, setPhoto] = useState(null);
         const [personalInfo, setPersonalInfo] = useState({
           name: "Your Name",
           title: "Senior React Architect",
@@ -168,17 +169,27 @@
         ]);
         
         const [skillInput, setSkillInput] = useState("");
-        
-        // UPDATED: Separate states for download buttons
         const [isDownloadingPng, setIsDownloadingPng] = useState(false);
         const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
         
         const resumeRef = useRef(null);
+        const photoInputRef = useRef(null);
 
-        // --- Event Handlers (Unchanged) ---
+        // --- Event Handlers ---
         const handlePersonalInfoChange = (e) => {
           const { name, value } = e.target;
           setPersonalInfo((prev) => ({ ...prev, [name]: value }));
+        };
+        
+        const handlePhotoUpload = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setPhoto(reader.result);
+                };
+                reader.readAsDataURL(file);
+            }
         };
 
         const handleExperienceChange = (index, e) => {
@@ -235,8 +246,6 @@
         };
         
         // --- Download Handlers ---
-        
-        // 1. PNG Download (Original function, renamed)
         const handleDownloadPng = () => {
           const resumeElement = resumeRef.current;
           if (!resumeElement) return;
@@ -244,7 +253,7 @@
           setIsDownloadingPng(true);
           
           html2canvas(resumeElement, {
-            scale: 3, // High-res "Retina" quality
+            scale: 3,
             useCORS: true,
             logging: false,
           }).then(canvas => {
@@ -266,7 +275,6 @@
           });
         };
         
-        // 2. NEW: PDF Download Handler
         const handleDownloadPdf = () => {
           const resumeElement = resumeRef.current;
           if (!resumeElement) return;
@@ -276,18 +284,17 @@
           const fileName = `${personalInfo.name.toLowerCase().replace(/ /g, '_')}_resume.pdf`;
           
           const opt = {
-            margin:       0, // We use our own padding in the resume element
+            margin:       0,
             filename:     fileName,
-            image:        { type: 'png', quality: 1.0 }, // Use PNG for lossless quality
+            image:        { type: 'png', quality: 1.0 },
             html2canvas:  { 
-              scale: 3, // Render at 3x scale for high resolution
+              scale: 3,
               useCORS: true,
               logging: false
             },
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
           };
           
-          // Use html2pdf.js to generate and save the PDF
           html2pdf().from(resumeElement).set(opt).save()
             .then(() => {
               setIsDownloadingPdf(false);
@@ -304,7 +311,6 @@
             {/* --- Left Panel: Editor --- */}
             <div className="w-full md:w-1/2 h-full overflow-y-auto bg-slate-50 p-8 shadow-inner">
               <div className="max-w-3xl mx-auto">
-                {/* UPDATED: Download Buttons Header */}
                 <div className="sticky top-0 bg-slate-50 py-4 z-10 border-b border-slate-200 mb-6">
                   <h1 className="text-3xl font-bold text-slate-900 mb-2">Super Resume</h1>
                   <p className="text-slate-600 mb-4">Fill in your details to build your resume in real-time.</p>
@@ -328,6 +334,39 @@
               
                 {/* Personal Info */}
                 <EditorSection title="Personal Info">
+                  <div className="mb-6">
+                     <label className="block text-sm font-medium text-slate-700 mb-2">Profile Photo</label>
+                     <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+                           {photo ? (
+                                <img src={photo} alt="Profile Preview" className="w-full h-full object-cover" />
+                           ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                </svg>
+                           )}
+                        </div>
+                        <div className="flex-grow">
+                             <input type="file" accept="image/*" ref={photoInputRef} onChange={handlePhotoUpload} className="hidden" />
+                             <button
+                                type="button"
+                                onClick={() => photoInputRef.current.click()}
+                                className="w-full mb-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-md font-medium hover:bg-slate-50 transition-colors text-sm"
+                             >
+                                Upload Photo
+                             </button>
+                             {photo && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPhoto(null)}
+                                    className="w-full px-4 py-2 bg-white border border-slate-300 text-red-600 rounded-md font-medium hover:bg-red-50 transition-colors text-sm"
+                                >
+                                    Remove
+                                </button>
+                             )}
+                        </div>
+                     </div>
+                  </div>
                   <Input label="Full Name" name="name" value={personalInfo.name} onChange={handlePersonalInfoChange} />
                   <Input label="Title" name="title" value={personalInfo.title} onChange={handlePersonalInfoChange} />
                   <Input label="Phone" name="phone" value={personalInfo.phone} onChange={handlePersonalInfoChange} />
@@ -418,7 +457,7 @@
               </div>
             </div>
 
-            {/* --- Right Panel: Preview (Unchanged) --- */}
+            {/* --- Right Panel: Preview --- */}
             <div className="w-full md:w-1/2 h-full overflow-y-auto bg-slate-200 p-8">
               <div 
                 ref={resumeRef} 
@@ -426,14 +465,25 @@
                 style={{ fontFamily: "'Inter', sans-serif" }}
               >
                 {/* Header */}
-                <header className="text-center mb-10">
-                  <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">{personalInfo.name}</h1>
-                  <h2 className="text-xl md:text-2xl font-medium text-blue-700 mb-4">{personalInfo.title}</h2>
-                  <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-                    <span>{personalInfo.phone}</span>
-                    <span>{personalInfo.email}</span>
-                    <span>{personalInfo.location}</span>
-                    <span>{personalInfo.linkedin}</span>
+                <header className={`flex items-center mb-10 ${!photo && 'justify-center text-center'}`}>
+                  {photo && (
+                    <div className="mr-8 flex-shrink-0">
+                      <img 
+                        src={photo} 
+                        alt="Profile" 
+                        className="w-28 h-28 rounded-full object-cover border-4 border-slate-200"
+                      />
+                    </div>
+                  )}
+                  <div className={photo ? 'text-left' : 'text-center'}>
+                    <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">{personalInfo.name}</h1>
+                    <h2 className="text-xl md:text-2xl font-medium text-blue-700 mb-4">{personalInfo.title}</h2>
+                    <div className={`flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600 ${!photo && 'justify-center'}`}>
+                      <span>{personalInfo.phone}</span>
+                      <span>{personalInfo.email}</span>
+                      <span>{personalInfo.location}</span>
+                      <span>{personalInfo.linkedin}</span>
+                    </div>
                   </div>
                 </header>
 
