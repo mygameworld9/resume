@@ -59,7 +59,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-      const { useState, useRef, Fragment } = React;
+      const { useState, useRef, useEffect, Fragment } = React;
+      
+      const LOCAL_STORAGE_KEY = 'superResumeData';
 
       // --- Reusable Styled Components (Unchanged) ---
       const Input = ({ label, name, value, onChange, placeholder, type = "text" }) => (
@@ -171,9 +173,28 @@
         const [skillInput, setSkillInput] = useState("");
         const [isDownloadingPng, setIsDownloadingPng] = useState(false);
         const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+        const [saveStatus, setSaveStatus] = useState('idle'); // 'idle', 'saving', 'saved'
         
         const resumeRef = useRef(null);
         const photoInputRef = useRef(null);
+        
+        // --- Load data from localStorage on initial render ---
+        useEffect(() => {
+          try {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+              const parsedData = JSON.parse(savedData);
+              setPhoto(parsedData.photo || null);
+              setPersonalInfo(parsedData.personalInfo || {});
+              setSummary(parsedData.summary || "");
+              setExperience(parsedData.experience || []);
+              setEducation(parsedData.education || []);
+              setSkills(parsedData.skills || []);
+            }
+          } catch (error) {
+            console.error("Failed to parse resume data from localStorage", error);
+          }
+        }, []);
 
         // --- Event Handlers ---
         const handlePersonalInfoChange = (e) => {
@@ -245,7 +266,30 @@
           setSkills(list);
         };
         
-        // --- Download Handlers ---
+        // --- Action Handlers ---
+        const handleSave = () => {
+            setSaveStatus('saving');
+            const resumeData = {
+                photo,
+                personalInfo,
+                summary,
+                experience,
+                education,
+                skills,
+            };
+            
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resumeData));
+                setTimeout(() => {
+                    setSaveStatus('saved');
+                    setTimeout(() => setSaveStatus('idle'), 2000);
+                }, 500);
+            } catch (error) {
+                console.error("Failed to save resume data to localStorage", error);
+                setSaveStatus('idle');
+            }
+        };
+        
         const handleDownloadPng = () => {
           const resumeElement = resumeRef.current;
           if (!resumeElement) return;
@@ -314,18 +358,31 @@
                 <div className="sticky top-0 bg-slate-50 py-4 z-10 border-b border-slate-200 mb-6">
                   <h1 className="text-3xl font-bold text-slate-900 mb-2">Super Resume</h1>
                   <p className="text-slate-600 mb-4">Fill in your details to build your resume in real-time.</p>
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button
+                      onClick={handleSave}
+                      disabled={isDownloadingPng || isDownloadingPdf || saveStatus !== 'idle'}
+                      className={`w-full text-white font-semibold py-3 px-6 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all disabled:cursor-not-allowed ${
+                        saveStatus === 'saved'
+                          ? 'bg-teal-500'
+                          : 'bg-slate-600 hover:bg-slate-700 focus:ring-slate-500 disabled:bg-slate-400'
+                      }`}
+                    >
+                      {saveStatus === 'idle' && 'Save Progress'}
+                      {saveStatus === 'saving' && 'Saving...'}
+                      {saveStatus === 'saved' && 'Saved!'}
+                    </button>
                     <button
                       onClick={handleDownloadPng}
-                      disabled={isDownloadingPng || isDownloadingPdf}
-                      className="w-full sm:w-1/2 bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
+                      disabled={isDownloadingPng || isDownloadingPdf || saveStatus !== 'idle'}
+                      className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
                     >
                       {isDownloadingPng ? 'Downloading PNG...' : 'Download PNG'}
                     </button>
                     <button
                       onClick={handleDownloadPdf}
-                      disabled={isDownloadingPng || isDownloadingPdf}
-                      className="w-full sm:w-1/2 bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
+                      disabled={isDownloadingPng || isDownloadingPdf || saveStatus !== 'idle'}
+                      className="w-full bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
                     >
                       {isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}
                     </button>
